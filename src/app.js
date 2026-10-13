@@ -1,6 +1,7 @@
 import express from "express";
 import pool from "./config/db.js";
 import authRoutes from "./modules/auth/auth.routes.js";
+import { authenticateToken } from "./middleware/auth.middleware.js";
 
 
 const app = express();
@@ -41,6 +42,33 @@ app.get("/health/db",async(req,res)=>{
         error: error.message,
         code: error.code,
     });
+    }
+});
+
+app.get("/api/users/me",authenticateToken,async(req,res)=>{
+    try{
+        const result=await pool.query(
+            `SELECT id, name, email, created_at
+            FROM users
+            WHERE id = $1`,
+            [req.user.id]
+        );
+
+        const user =result.rows[0];
+
+        if(!user){
+            return res.status(404).json({
+                success:false,
+                message:"User Not Found",
+            });
+        }
+    }catch(error){
+        console.error("Fetching profile failed:" , error.message);
+
+        return res.status(500).json({
+            success:false,
+            message:"Internal Server error",
+        });
     }
 });
 export default app;
